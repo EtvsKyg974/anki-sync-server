@@ -1,0 +1,54 @@
+name: Build and Push Anki Sync Server Image
+
+on:
+  push:
+    branches: [ "main" ]
+  release:
+    types: [ "created" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write   # 允许推送到 GitHub Container Registry
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+
+    env:
+      ANKI_VERSION: "25.07.5"
+      IMAGE_NAME: "anki-sync-server"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          IMAGE_ID=ghcr.io/etvskyg974/${{ env.IMAGE_NAME }}
+          VERSION=${{ env.ANKI_VERSION }}
+
+          echo "IMAGE_ID=$IMAGE_ID"
+          echo "VERSION=$VERSION"
+
+          docker build \
+            --platform linux/amd64 \
+            --build-arg ANKI_VERSION=$VERSION \
+            --tag $IMAGE_ID:$VERSION \
+            --tag $IMAGE_ID:latest \
+            --file Dockerfile .
+
+      - name: Push Docker image
+        run: |
+          IMAGE_ID=ghcr.io/etvskyg974/${{ env.IMAGE_NAME }}
+          VERSION=${{ env.ANKI_VERSION }}
+
+          docker push $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:latest
